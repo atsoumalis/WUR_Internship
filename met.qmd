@@ -1,0 +1,49 @@
+---
+title: "Core_drought_metabolome"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+## ---- 0 - setup ----
+
+library(tidyverse)
+library(openxlsx)
+library(ggplot2)
+library(patchwork)
+
+setwd("~/Documents/Tsoumalis_Git/")  # update this to your code_data folder path
+
+dir.create("./core_drought_metabolome", recursive = TRUE)
+
+
+```
+
+```{r}
+## 1. Loading the limma data
+## ---- 1 - load limma results ----
+
+pos <- read.xlsx(
+  "~/Downloads/OneDrive_1_06-05-2026/Analysis_chrats_2026/metabolomics_limma_perspp_all_spp.xlsx",
+  sheet = "positive_per_species"
+)
+
+neg <- read.xlsx(
+  "~/Downloads/OneDrive_1_06-05-2026/Analysis_chrats_2026/metabolomics_limma_perspp_all_spp.xlsx",
+  sheet = "negative_per_species"
+)
+
+pos$ionization_mode <- "positive"
+neg$ionization_mode <- "negative"
+
+cat("Positive mode features:", nrow(pos), "\n")
+cat("Negative mode features:", nrow(neg), "\n")
+```
