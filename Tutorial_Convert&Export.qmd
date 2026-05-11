@@ -1,0 +1,65 @@
+---
+title: "Tutorial_Convert&Export"
+format: html
+editor: visual
+---
+
+```{r}
+
+```
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this
+
+```{r}
+library(mia)
+data("GlobalPatterns", package = "phyloseq")
+GlobalPatterns_phyloseq <- GlobalPatterns
+GlobalPatterns_phyloseq
+```
+
+```{r}
+# convert phyloseq to TSE
+GlobalPatterns_TSE <- convertFromPhyloseq(GlobalPatterns_phyloseq)
+GlobalPatterns_TSE
+
+
+```
+
+```{r}
+# convert TSE to phyloseq
+GlobalPatterns_phyloseq2 <- convertToPhyloseq(GlobalPatterns_TSE)
+GlobalPatterns_phyloseq2
+```
+
+```{r}
+# Export TreeSummarizedExperiment
+
+data("GlobalPatterns", package = "mia")
+tse <- GlobalPatterns
+
+molten_tse <- meltSE(
+    tse,
+    add_row_data = TRUE,
+    add_col_data = TRUE,
+    assay.type = "counts"
+)
+
+# Export as a feather file
+library(feather)
+path <- "path/to/tse.feather"
+write_feather(molten_tse, path)
+
+write.csv(molten_tse, "path/to/tse.csv", row.names = FALSE))
+```

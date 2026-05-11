@@ -1,0 +1,227 @@
+---
+title: "WUR_Tutorial"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+BiocManager::install("microbiome/mia")
+
+library(remotes)
+install_github("microbiome/OMA", dependencies = TRUE, upgrade = TRUE)
+```
+
+```{r}
+library(mia)
+data("GlobalPatterns", package = "mia")
+tse <- GlobalPatterns
+tse
+```
+
+You can add options to executable code like this
+
+```{r}
+tse <- tse[1:5, c(1, 19, 16)]
+tse
+
+```
+
+```{r}
+assays(tse)
+assay(tse, "counts") |> head()
+```
+
+```{r}
+mat <- matrix(nrow = nrow(tse), ncol = ncol(tse))
+assay(tse, "empty_table", withDimnames = FALSE) <- mat
+assays(tse)
+
+assay(tse, "empty_table") |> head()
+
+colData(tse)
+rowData(tse)
+```
+
+```{r}
+
+biom_file_path <- ("~/Downloads/Aggregated_humanization2.biom")
+sample_meta_file_path <- ("~/Downloads/Mapping_file_ADHD_aggregated.csv")
+tree_file_path <- ("~/Downloads/Data_humanization_phylo_aggregation.tre")
+
+library(mia)
+tse <- importBIOM(
+    biom_file_path,
+    rank.from.prefix = TRUE,
+    prefix.rm = TRUE,
+    artifact.rm = TRUE
+)
+
+tse
+
+```
+
+```{r}
+# The imported BIOM did not contain any colData
+# lets add colData (csv file with colnames in the first row and row nammes in the first collumn)
+colData(tse)
+
+# Check if that sample exists
+if (is.null(rownames(sample_meta)) || is.null(colnames(tse))) {
+  stop("Samples names missing", call. = FALSE)
+}
+
+# Sort rows in sample metadata to match with TreeSE
+sample_order <- match(colnames(tse), rownames(sample_meta))
+sample_meta <- sample_meta[sample_order, , drop = FALSE]
+
+# if sample metadata DID NOT include all samples, missing ones are now names NA.
+# That is why we replace sample metadata names with the ones in TreeSE
+
+rownames(sample_meta) <- colnames(tse)
+
+sample_order
+colnames(tse)
+sample_meta
+```
+
+```{r}
+colData(tse)
+
+colData(tse) <- DataFrame(sample_meta)
+colData(tse) |> head()
+
+
+```
+
+```{r}
+# Finally we add the phylogenetic tree to the rowData slot. 
+# Such feature is available ONLY in TreeSE objects. Tree specifying the sample hierarchy can be stored in the colTree slot
+
+tree <- ape::read.tree(tree_file_path)
+
+rowTree(tse) <- tree
+
+tse
+rowData(tse)
+rowTree(tse) |> head()
+```
+
+```{r}
+#CSV import
+count_file <- ("~/Downloads/taxonomy_abundance.csv")
+tax_file<- ("~/Downloads/taxonomy_table.csv")
+sample_file <- ("~/Downloads/sample_metadata.csv")
+
+counts <- read.csv(count_file, row.names = 1) # Abundance table (e.g. ASV data; to assay data)
+tax <- read.csv(tax_file, row.names = 1) # Taxonomy table (to rowData)
+samples <- read.csv(sample_file, row.names = 1) # Sample data (to colData)
+
+# Match rows and columns
+counts <- counts[rownames(tax), rownames(samples)]
+
+# Let's ensure that the data is in correct (numeric matrix) format:
+counts <- as.matrix(counts)
+
+# coldata rownames match assay colnames
+all(rownames(samples) == colnames(counts)) # our dataset
+
+class(samples)
+
+# rowdata rownames match assay rownames
+all(rownames(tax) == rownames(counts))
+class(tax)
+
+class(counts)
+
+# Ensure that colnames of assay match with rownames of colData, and rownames of assay match with rownames of rowData.
+
+# If your data do not have names, you have to be especially careful, since this can lead to errors!
+
+
+ 
+
+```
+
+```{r}
+# Create a TSE
+
+tse_taxa <- TreeSummarizedExperiment(
+  assays = SimpleList(counts = counts),
+  colData = DataFrame(samples),
+  rowData = DataFrame(tax)
+)
+
+tse_taxa
+
+# IMPORTANT!! 
+# When creating TreeSE, assay must be a matrix, and both colData and rowData must be DataFrame objects.
+```
+
+```{r}
+# Data resources 
+data(package = "mia")
+
+data("GlobalPatterns", package = "mia")
+GlobalPatterns
+```
+
+```{r}
+library(microbiomeDataSets)
+availableDataSets()
+
+
+data(HintikkaXOData, package = "mia")
+
+mae <- HintikkaXOData
+mae
+
+```
+
+```{r}
+# Exercise 
+library(mia)
+
+
+### Defining FILE PATHS ###
+
+url_to_assay <- url("https://github.com/microbiome/data/raw/main/OKeefeDSData/okeefe_assay.csv")
+url_to_coldata <- url("https://github.com/microbiome/data/raw/main/OKeefeDSData/okeefe_coldata.csv")
+url_to_rowdata <- url("https://github.com/microbiome/data/raw/main/OKeefeDSData/okeefe_rowdata.csv")
+
+
+### Importing FILES ###
+
+okeefe_assay <- read.csv(url_to_assay, row.names = 1)
+colnames(okeefe_assay) <- gsub("\\.", "-", colnames(okeefe_assay))
+
+okeefe_coldata <- read.csv(url_to_coldata, row.names = 1)
+okeefe_rowdata <- read.csv(url_to_rowdata, row.names = 1)
+
+okeefe_assay <- as.matrix(okeefe_assay)
+### Constructing TSE ###
+
+tse <- TreeSummarizedExperiment(assays = list(counts = okeefe_assay),
+                                colData = okeefe_coldata,
+                                rowData = okeefe_rowdata)
+
+
+tse
+class(okeefe_assay)
+
+okeefe_rowdata<- DataFrame(okeefe_rowdata)
+okeefe_coldata <- DataFrame(okeefe_coldata)
+class(okeefe_coldata)
+class(okeefe_rowdata)
+### SAVE into RDS ###
+saveRDS(tse, file = "tse.rds")
+
+
+```

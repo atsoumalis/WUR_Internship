@@ -1,0 +1,177 @@
+---
+title: "Subsetting"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+# Load libraries and data
+library(mia)
+library(dplyr)
+library(knitr)
+
+data("GlobalPatterns", package = "mia")
+tse <- GlobalPatterns
+
+dim(tse)
+#When subsetting by sample, expect the number of columns to decrease. When subsetting by feature, expect the number of rows to decrease.
+```
+
+```{r}
+# Show the frequency of each value
+tse$SampleType |>
+    table() |>
+    kable()
+```
+
+```{r}
+# Subset by sample (column-wise)
+tse_sub <- tse[, tse$SampleType %in% c("Feces", "Skin", "Tongue")]
+
+# Show dimensions
+dim(tse_sub)
+
+```
+
+```{r}
+# Show the frequency of each value
+rowData(tse)$Phylum |>
+    table() |>
+    head() |>
+    kable()
+
+#Subset by feature (row-wise)
+# Subset by feature
+#The first term with the %in% operator includes all the features of interest, whereas the second term after the AND operator & filters out all features that have an NA in place of the phylum variable.
+selected <- rowData(tse)$Phylum %in% c("Actinobacteria", "Chlamydiae") &
+    !is.na(rowData(tse)$Phylum)
+tse_sub <- tse[selected, ]
+
+# Show dimensions
+dim(tse_sub)
+
+```
+
+```{r}
+#Subset by sample and feature
+# Subset by sample and feature and remove NAs
+selected_rows <- rowData(tse)$Phylum %in% c("Actinobacteria", "Chlamydiae") &
+    !is.na(rowData(tse)$Phylum)
+selected_cols <- tse$SampleType %in% c("Feces", "Skin", "Tongue")
+tse_sub <- tse[selected_rows, selected_cols]
+
+# Show dimensions
+dim(tse_sub)
+
+```
+
+```{r}
+#Filtering based on library size
+#As a preprocessing step, one might want to remove samples that do not exceed certain library size, i.e., total number of counts. Additionally, sometimes data might contain samples that do not contain any of the features present in the dataset. This can occur, for example, after data subsetting. To focus only samples containing sufficient information, we might want to remove those instances. In this example, we are interested only those features that belong to the species Achromatiumoxaliferum.
+
+ind <- rowData(tse)$Species == "Achromatiumoxaliferum"
+ind [is.na(ind)] <- FALSE
+tse_sub <- tse[ind, ]
+
+#Calculate the total number of counts in each sample
+library(scuttle)
+
+tse_sub <- addPerCellQCMetrics(tse_sub)
+tse_sub$total |> head()
+
+#Now we can see that certain samples do not include any bacteria. We can remove those.
+# Remove samples that do not contain any bacteria
+tse_sub <- tse_sub[,tse_sub$total !=0]
+tse_sub
+
+```
+
+```{r}
+#Filtering out zero-variance
+#Calculate the standard deviation
+rowData(tse)[["sd"]] <- rowSds(assay(tse, "counts"))
+
+#Plot 
+hist(log(rowData(tse)[["sd"]]))
+```
+
+```{r}
+#From the histogram of feature variances, we can establish a sensible threshold for filtering. For example, using a threshold of 0 would effectively remove a large set of features that show no variance.
+
+#It’s important to note that the data is on a log scale, meaning that a log-transformed value of 1 corresponds to 0 (i.e., log(1) = 0). This ensures that features with zero variance are correctly identified and filtered out.
+
+th <- 1
+
+selected <- rowData(tse)[["sd"]] > 1 
+tse_sub <- tse[selected, ]
+tse_sub
+```
+
+```{r}
+#subset based on prevalence
+tse_sub <- subsetByRare(tse, rank = "Genus", prevalence = 0.1, detection = 1)
+tse_sub
+```
+
+```{r}
+### Importing FILES ###
+
+okeefe_assay <- read.csv("~/Downloads/okeefe_assay.csv", row.names = 1)
+colnames(okeefe_assay) <- gsub("\\.", "-", colnames(okeefe_assay))
+
+okeefe_coldata <- read.csv("~/Downloads/okeefe_coldata.csv", row.names = 1)
+okeefe_rowdata <- read.csv("~/Downloads/okeefe_rowdata.csv", row.names = 1)
+
+
+### Constructing TSE ###
+
+tse <- TreeSummarizedExperiment(assays = list(counts = okeefe_assay),
+                                colData = okeefe_coldata,
+                                rowData = okeefe_rowdata)
+dim(tse)
+
+```
+
+```{r}
+library(scuttle)
+tse <- addPerCellQCMetrics(tse)
+
+colData(tse) |> head()
+
+names (colData(tse))
+
+library(miaViz)
+plotHistogram(tse, col.var = "total")
+```
+
+```{r}
+#Select samples that exceed specific library size threshold that you have selected based on histogram.
+
+summary(colData(tse)$total)
+
+th1 <- 3000
+th2 <- 25000
+
+tse_filtered <- tse [,colData(tse)$total > th1 & colData(tse)$total < th2]
+tse_filtered
+
+cat("Before:", ncol(tse), "samples\n")
+cat("After:", ncol(tse_filtered), "samples\n")
+#Subset data by selecting only prevalent features. Use counts assay. Specify detection threshold 1 and prevalence threshold 20%.
+
+tse_prevalent <- subsetByPrevalent(
+  tse_filtered, assay.type = "counts",
+  detection = 1, 
+  prevalence = 0.2)
+
+cat("Before prevalence filtering:", nrow(tse_filtered), "features\n")
+cat("After prevalence filtering:", nrow(tse_prevalent), "features\n")
+```

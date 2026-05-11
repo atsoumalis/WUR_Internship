@@ -1,0 +1,50 @@
+---
+title: "Data_Wrangling"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+library(mia)
+library(knitr)
+
+data("GlobalPatterns")
+tse <- GlobalPatterns
+
+# Agglomerate to phyla
+tse <- agglomerateByRank(tse, rank = "Phylum")
+tse
+
+# Split data based on sample type
+tse_list <- splitOn(tse, by = "samples", group = "SampleType")
+
+# Loop over the list of TreeSEs, and get top features for each
+top_taxa <- sapply(tse_list, getTop)
+
+top_taxa |> kable()
+```
+
+```{r}
+
+#The information contained by the colData of a TreeSummarizedExperiment can be added and/or modified by accessing the desired variables. You might want to add or modify this data to include new variables or update existing ones, which can be essential for ensuring that all relevant metadata is available for subsequent analyses.
+
+data("GlobalPatterns")
+tse <- GlobalPatterns
+tse
+
+#Modify the Description entries
+colData(tse)$Description <- paste(
+  colData(tse)$Description, "modified description"
+)
+
+tse$Des
+
+```

@@ -1,0 +1,79 @@
+---
+title: "Transformation"
+format: html
+editor: visual
+---
+
+## Quarto
+
+Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
+
+## Running Code
+
+When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
+
+```{r}
+1 + 1
+```
+
+You can add options to executable code like this
+
+```{r}
+okeefe_assay <- read.csv("~/Downloads/okeefe_assay.csv", row.names = 1)
+colnames(okeefe_assay) <- gsub("\\.", "-", colnames(okeefe_assay))
+
+okeefe_coldata <- read.csv("~/Downloads/okeefe_coldata.csv", row.names = 1)
+okeefe_rowdata <- read.csv("~/Downloads/okeefe_rowdata.csv", row.names = 1)
+
+
+### Constructing TSE ###
+
+tse <- TreeSummarizedExperiment(assays = list(counts = okeefe_assay),
+                                colData = okeefe_coldata,
+                                rowData = okeefe_rowdata)
+dim(tse)
+```
+
+```{r}
+#Pseudocount is a small non-negative value (e.g., 1) added to the normalized data to avoid taking the logarithm of zero. Its value can have a significant impact on the results when applying a logarithm transformation to normalized data, as the logarithm transformation is a nonlinear operation that can fundamentally change the data distribution (Costea et al. 2014).
+
+#Pseudocount should be chosen consistently across all normalization methods being compared, for example, by setting it to a value smaller than the minimum abundance value before transformation. Some tools, like ANCOMBC, take into account the effect of the pseudocount by performing sensitivity tests using multiple pseudocount values. See Chapter 16.
+# Load example data
+library(mia)
+data("Tengeler2020")
+tse <- Tengeler2020
+
+# Transform counts assay to relative abundances
+tse <- transformAssay(tse, assay.type = "counts", method = "relabundance")
+tse
+```
+
+```{r}
+assay(tse, "relabundance") |> head()
+#
+```
+
+```{r}
+#In ‘pa’ transformation, abundance table is converted to a presence/absence table that ignores abundances and only indicates whether the given feature is detected in the sample.
+
+tse <- transformAssay(tse, method = "pa")
+assay(tse, "pa") |> head()
+
+assays(tse)
+##  List of length 3
+##  names(3): counts relabundance pa
+```
+
+```{r}
+tse <- transformAssay(
+    x = tse,
+    assay.type = "counts",
+    method = "clr",
+    pseudocount = TRUE,
+    name = "clr"
+)
+```
+
+```{r}
+tse <- transformAssay(tse, method = "philr", MARGIN = 1L, pseudocount = TRUE)
+```
