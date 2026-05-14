@@ -4,28 +4,14 @@ format: html
 editor: visual
 ---
 
-<<<<<<< HEAD
 ```{r}
 ## setup 
-=======
-## Quarto
-
-Quarto enables you to weave together content and executable code into a finished document. To learn more about Quarto see <https://quarto.org>.
-
-## Running Code
-
-When you click the **Render** button a document will be generated that includes both content and the output of embedded code. You can embed code like this:
-
-```{r}
-## ---- 0 - setup ----
->>>>>>> ff0e87a1f9d530222d7038a136ea6477e01a35d1
 
 library(tidyverse)
 library(openxlsx)
 library(ggplot2)
 library(patchwork)
 
-<<<<<<< HEAD
 dir.create("~/WUR/core_drought_metabolome", recursive = TRUE)
 
 PADJ_THRESHOLD <- 0.05
@@ -33,33 +19,16 @@ CORE_THRESHOLD <- 4
 
 
 ## ---- 1 - load and combine pos and neg mode data ----
-=======
-setwd("~/Documents/Tsoumalis_Git/")  # update this to your code_data folder path
-
-dir.create("./core_drought_metabolome", recursive = TRUE)
-
-
-```
-
-```{r}
-## 1. Loading the limma data
-## ---- 1 - load limma results ----
->>>>>>> ff0e87a1f9d530222d7038a136ea6477e01a35d1
 
 pos <- read.xlsx(
   "~/Downloads/OneDrive_1_06-05-2026/Analysis_chrats_2026/metabolomics_limma_perspp_all_spp.xlsx",
   sheet = "positive_per_species"
 )
-<<<<<<< HEAD
-=======
-
->>>>>>> ff0e87a1f9d530222d7038a136ea6477e01a35d1
 neg <- read.xlsx(
   "~/Downloads/OneDrive_1_06-05-2026/Analysis_chrats_2026/metabolomics_limma_perspp_all_spp.xlsx",
   sheet = "negative_per_species"
 )
 
-<<<<<<< HEAD
 # track which mode each feature came from
 pos$ionization_mode <- "positive"
 neg$ionization_mode <- "negative"
@@ -255,11 +224,4 @@ ggsave(
   filename = "~/WUR//bubble_plot_core_metabolites.png",
   width    = 3500, height = 2000, units = "px"
 )
-=======
-pos$ionization_mode <- "positive"
-neg$ionization_mode <- "negative"
-
-cat("Positive mode features:", nrow(pos), "\n")
-cat("Negative mode features:", nrow(neg), "\n")
->>>>>>> ff0e87a1f9d530222d7038a136ea6477e01a35d1
 ```

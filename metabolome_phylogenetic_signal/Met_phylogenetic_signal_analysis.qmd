@@ -1,0 +1,170 @@
+---
+title: "metabolome phylogentic signal analysis"
+format: html
+editor: visual
+---
+
+```{r}
+## ---- 0 - setup ----
+
+library(tidyverse)
+library(ape)
+library(vegan)
+library(ggplot2)
+
+dir.create("~/WUR/metabolome_phylogenetic_signal", recursive = TRUE)
+
+PERMUTATIONS <- 999
+set.seed(123) # makes the Mantel test reproducible, would get differrent p-values every time it run 
+
+```
+
+```{r}
+## 1. load and prepare phylogenetic matrix
+#load the phylogenetic tree
+#the same tree used in the paper's Mantel test
+#It has 25 species single Solanum lycopersicum (= Moneyberg), no unplanted soil
+
+host_phylogeny <- read.tree(
+  "~/Downloads/code_data/processing_preparation_scripts/plant_phylogeny/output/merged_tree_plus_arcanum.tre"
+)
+
+#check what species are in the tree
+cat("Species in tree", length(host_phylogeny$tip.label), "\n")
+print(host_phylogeny$tip.label)
+
+#convert tree into a matrix of divergence times between every pair of species
+pd <- cophenetic.phylo(host_phylogeny)
+
+#divide by 2: cophenetic gives the full branch length between two tups
+#dividing by 2 gives the age of their last common ancestor
+pd <- pd/2
+
+#sort rows and columns alphabetically
+#ensure the metabolomics matrix is in the same exact order
+pd <- pd[,order(colnames(pd))]
+pd <- pd[order(rownames(pd)),]
+
+cat("\nPhylogenetic distance matrix dimensions:", dim(pd), "\n")
+cat("First 3 species:", rownames(pd)[1:3], "\n")
+
+```
+
+```{r}
+
+## 2. load metabolomics data and metadata
+
+# load quantification tables (pos and neg ionization mode)
+load("~/Downloads/code_data/data_metabolomics/quant_tables_feature_groups_l_l.RData")
+
+#extract pos and neg quantification tables
+#rows = samples, columns = metabolite features
+
+met_pos <- quant_tables_feature_groups_l_l$pos$quant_table
+met_neg <- quant_tables_feature_groups_l_l$neg$quant_table
+
+cat("Positive mode: samples =", nrow(met_pos), ", features =", ncol(met_pos), "\n")
+cat("Negative mode: samples =", nrow(met_neg), ", features =", ncol(met_neg), "\n")
+
+#load sample metadata 
+metadata <- read.csv(
+  "~/Downloads/code_data/data_metabolomics/file_list_metadata.csv",
+  sep = ";", header = TRUE
+)
+
+#exclude QC samples, blank extractions and pooled MSMS samples
+metadata <- subset(metadata, !(species_code %in% c("QC_technical_dont_use", "QC", "blank_extraction")))
+metadata <- subset(metadata, !(position == "pooled"))
+
+#keep only columns we need 
+metadata <- metadata %>% dplyr::select(file_name, species_name, treatment)
+
+cat("\nSamples after filtering metadata:", nrow(metadata), "\n")
+cat("Treatments:", unique(metadata$treatment), "\n")
+cat("Species:", length(unique(metadata$species_name)), "\n")
+
+
+
+
+
+```
+
+```{r}
+## 3. combine pos and neg node and add metadata
+#combine positive and negative into on etable
+#first make sample names a column so we can merge
+
+met_pos <- tibble::rownames_to_column(met_pos,"file_name")
+met_neg <- tibble::rownames_to_column(met_neg, "file_name")
+
+
+#add prefix to feature ID to distinguish pos form neg after combining
+colnames(met_pos)[-1] <- paste0("pos_", colnames(met_pos)[-1])
+colnames(met_neg)[-1] <- paste0("neg_", colnames(met_neg)[-1])
+
+#merge pos and neg by file name (each row = one sample)
+met_combined <- inner_join(met_pos, met_neg, by = "file_name")
+
+cat("Combined features:", ncol(met_combined) - 1, "\n")  # -1 for file_name column
+
+#add species name and treatment from metadata
+met_combined <- inner_join(metadata, met_combined, by = "file_name")
+
+# remove file name column, no longer needed 
+met_combined <- dplyr::select(met_combined, - file_name)
+
+
+cat("Samples after joining with metadata:", nrow(met_combined), "\n")
+cat("Columns (species_name + treatment + features):", ncol(met_combined), "\n")
+
+# check treatments
+cat("\nSamples per treatment:\n")
+print(table(met_combined$treatment))
+
+# check species
+cat("\nSpecies in metabolomics data:\n")
+print(sort(unique(met_combined$species_name)))
+
+
+
+```
+
+```{r}
+## 4. prepare data for Mantel test 
+
+#replace NAs with 0s 
+met_combined[is.na(met_combined)] <- 0 
+
+#exclude Heinz and cerasiforme tomato genotypes
+#keep only Moneyberg as the single representative
+
+met_combined <- met_combined[!met_combined$species_name %in% c("Solanum lycopersicum var. Heinz", 
+                                                              "Solanum lycopersicum var. cerasiforme"), ]
+
+#rename Moneyberg to plain "Solanum lkycopersicum" to match free tip label
+
+met_combined$species_name <- gsub(
+  "Solanum lycopersicum var. Moneyberg",
+  "Solanum lycopersicum",
+  met_combined$species_name
+)
+
+cat("Samples after tomato filtering:", nrow(met_combined), "\n")
+cat("Species remaining:", length(unique(met_combined$species_name)), "\n")
+
+
+#split into WW and DR
+met_WW <- met_combined[met_combined$treatment == "WW", ]
+met_DR <- met_combined[met_combined$treatment == "DR", ]
+
+#remove treatment column - only keep species names and features 
+met_WW <- dplyr::select(met_WW, - treatment)
+met_DR <- dplyr::select(met_DR, - treatment)
+
+cat("\nWW samples:", nrow(met_WW), "\n")
+cat("DR samples:", nrow(met_DR), "\n")
+```
+
+```{r}
+
+```
